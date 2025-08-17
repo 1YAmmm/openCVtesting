@@ -59,91 +59,100 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
 
-  <script type="text/javascript">
-    const URL = "./my_model/";
-    const ESP_IP = "http://192.168.100.98";
-    const TRIGGER_CLASS = "led2";
-    const CONFIDENCE_THRESHOLD = 0.90;
+ <script type="text/javascript">
+  const URL = "./my_model/";
+  const ESP_IP = "http://192.168.100.98";
+  const TRIGGER_CLASS = "led2";
+  const CONFIDENCE_THRESHOLD = 0.90;
 
-    let model, webcam, ctx, labelContainer, maxPredictions;
-    let lastSent = "none";
+  let model, webcam, ctx, labelContainer, maxPredictions;
+  let lastSent = "none";
 
-    async function init() {
-      const modelURL = URL + "model.json";
-      const metadataURL = URL + "metadata.json";
+  async function init() {
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
 
-      model = await tmPose.load(modelURL, metadataURL);
-      maxPredictions = model.getTotalClasses();
+    model = await tmPose.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
 
-      const size = 600;
-      webcam = new tmPose.Webcam(size, size, true);
-      await webcam.setup();
-      await webcam.play();
-      window.requestAnimationFrame(loop);
+    const size = 600;
+    webcam = new tmPose.Webcam(size, size, true);
+    await webcam.setup();
+    await webcam.play();
+    window.requestAnimationFrame(loop);
 
-      const canvas = document.getElementById("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      ctx = canvas.getContext("2d");
+    const canvas = document.getElementById("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    ctx = canvas.getContext("2d");
 
-      labelContainer = document.getElementById("label-container");
-      labelContainer.innerHTML = "";
-      for (let i = 0; i < maxPredictions; i++) {
-        labelContainer.appendChild(document.createElement("div"));
+    labelContainer = document.getElementById("label-container");
+    labelContainer.innerHTML = "";
+    for (let i = 0; i < maxPredictions; i++) {
+      labelContainer.appendChild(document.createElement("div"));
+    }
+
+    document.getElementById("start-button").style.display = "none";
+  }
+
+  async function loop(timestamp) {
+    webcam.update();
+    await predict();
+    window.requestAnimationFrame(loop);
+  }
+
+  async function predict() {
+    const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+    const prediction = await model.predict(posenetOutput);
+
+    let poseDetected = false;
+
+    for (let i = 0; i < maxPredictions; i++) {
+      const className = prediction[i].className;
+      const probability = prediction[i].probability;
+      labelContainer.childNodes[i].innerHTML = className + ": " + probability.toFixed(2);
+
+      if (className === TRIGGER_CLASS && probability > CONFIDENCE_THRESHOLD) {
+        poseDetected = true;
       }
-
-      document.getElementById("start-button").style.display = "none";
     }
 
-    async function loop(timestamp) {
-      webcam.update();
-      await predict();
-      window.requestAnimationFrame(loop);
+    if (poseDetected && lastSent !== "on") {
+      sendToESP("on");
+      lastSent = "on";
+    } else if (!poseDetected && lastSent !== "off") {
+      sendToESP("off");
+      lastSent = "off";
     }
 
-    async function predict() {
-      const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-      const prediction = await model.predict(posenetOutput);
+    drawPose(pose);
+  }
 
-      let poseDetected = false;
-
-      for (let i = 0; i < maxPredictions; i++) {
-        const className = prediction[i].className;
-        const probability = prediction[i].probability;
-        labelContainer.childNodes[i].innerHTML = className + ": " + probability.toFixed(2);
-
-        if (className === TRIGGER_CLASS && probability > CONFIDENCE_THRESHOLD) {
-          poseDetected = true;
+  function sendToESP(state) {
+    fetch(`${ESP_IP}/led/${state}`)
+      .then(response => {
+        if (response.ok) {
+          console.log(`Success: LED turned ${state.toUpperCase()}`);
+        } else {
+          console.error(`Failed to turn ${state} LED, status: ${response.status}`);
         }
-      }
+      })
+      .catch(error => {
+        console.error(`Fetch error turning LED ${state}:`, error);
+      });
+  }
 
-      if (poseDetected && lastSent !== "on") {
-        sendToESP("on");
-        lastSent = "on";
-      } else if (!poseDetected && lastSent !== "off") {
-        sendToESP("off");
-        lastSent = "off";
-      }
-
-      drawPose(pose);
-    }
-
-    function sendToESP(state) {
-      fetch(`${ESP_IP}/led/${state}`)
-        .then(response => console.log(`LED ${state.toUpperCase()} sent to ESP`))
-        .catch(error => console.error("ESP fetch error:", error));
-    }
-
-    function drawPose(pose) {
-      if (webcam.canvas) {
-        ctx.drawImage(webcam.canvas, 0, 0, 600, 600);
-        if (pose) {
-          const minConfidence = 0.5;
-          tmPose.drawKeypoints(pose.keypoints, minConfidence, ctx);
-          tmPose.drawSkeleton(pose.keypoints, minConfidence, ctx);
-        }
+  function drawPose(pose) {
+    if (webcam.canvas) {
+      ctx.drawImage(webcam.canvas, 0, 0, 600, 600);
+      if (pose) {
+        const minConfidence = 0.5;
+        tmPose.drawKeypoints(pose.keypoints, minConfidence, ctx);
+        tmPose.drawSkeleton(pose.keypoints, minConfidence, ctx);
       }
     }
-  </script>
+  }
+</script>
+
 </body>
 </html>
