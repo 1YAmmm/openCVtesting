@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ESP8266 LED Control</title>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .on {
+      background-color: #00cc44;
+      color: white;
+    }
+    .on:hover { background-color: #009933; }
+    .off {
+      background-color: #cc0000;
+      color: white;
+    }
+    .off:hover { background-color: #990000; }
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ESP8266 LED Control</h1>
+  <button class="on" onclick="sendToESP('on')">Turn ON</button>
+  <button class="off" onclick="sendToESP('off')">Turn OFF</button>
+  <div id="status">Waiting for action...</div>
+
+  <script>
+    const ESP_IP = "http://192.168.100.98"; // change to your ESP IP
+
+    function sendToESP(state) {
+      fetch(`${ESP_IP}/led/${state}`)
+        .then(response => {
+          if (response.ok) {
+            document.getElementById("status").innerText =
+              `✅ LED turned ${state.toUpperCase()}`;
+          } else {
+            document.getElementById("status").innerText =
+              `❌ Failed to send ${state} (status ${response.status})`;
+          }
+        })
+        .catch(error => {
+          document.getElementById("status").innerText =
+            `⚠️ Error sending ${state}: ${error}`;
+        });
+    }
+  </script>
+</body>
+</html>
