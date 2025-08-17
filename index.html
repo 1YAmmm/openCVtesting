@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Full Screen Pose Control</title>
+  <title>Pose Control 600x600</title>
   <style>
     * {
       margin: 0;
@@ -13,35 +13,33 @@
     body, html {
       width: 100%;
       height: 100%;
-      overflow: hidden;
       background: #000;
       color: white;
       font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
     }
 
     #canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      width: 600px;
+      height: 600px;
+      border: 2px solid #00aaff;
       display: block;
     }
 
     #label-container {
-      position: absolute;
-      top: 10px;
-      left: 10px;
+      margin-top: 10px;
       background-color: rgba(0, 0, 0, 0.6);
       padding: 10px;
       border-radius: 8px;
+      width: 600px;
+      text-align: center;
     }
 
     #start-button {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 2;
+      margin-bottom: 10px;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
@@ -77,17 +75,15 @@
       model = await tmPose.load(modelURL, metadataURL);
       maxPredictions = model.getTotalClasses();
 
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
-      webcam = new tmPose.Webcam(width, height, true);
+      const size = 600;
+      webcam = new tmPose.Webcam(size, size, true);
       await webcam.setup();
       await webcam.play();
       window.requestAnimationFrame(loop);
 
       const canvas = document.getElementById("canvas");
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = size;
+      canvas.height = size;
       ctx = canvas.getContext("2d");
 
       labelContainer = document.getElementById("label-container");
@@ -140,7 +136,7 @@
 
     function drawPose(pose) {
       if (webcam.canvas) {
-        ctx.drawImage(webcam.canvas, 0, 0, window.innerWidth, window.innerHeight);
+        ctx.drawImage(webcam.canvas, 0, 0, 600, 600);
         if (pose) {
           const minConfidence = 0.5;
           tmPose.drawKeypoints(pose.keypoints, minConfidence, ctx);
